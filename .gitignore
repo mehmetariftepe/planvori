@@ -1,0 +1,19 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# İmza anahtarları — herkese açık depoya konmamalı
+signing/
+*.keystore
+*.jks
+
+# Gizli bilgiler
+google-services.json
+client_secret*.json

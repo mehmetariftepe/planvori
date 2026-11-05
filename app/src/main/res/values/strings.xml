@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Planvori</string>
+    <string name="widget_description">Seçtiğiniz görevleri hızlıca gösterir</string>
+    <string name="schedule_widget_description">Bugünkü ders programınız</string>
+</resources>
