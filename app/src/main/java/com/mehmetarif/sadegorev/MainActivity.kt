@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mehmetarif.sadegorev.data.*
 import com.mehmetarif.sadegorev.reminder.AlarmScheduler
+import com.mehmetarif.sadegorev.reminder.CourseAlarmScheduler
 import com.mehmetarif.sadegorev.widget.refreshWidgets
 import com.mehmetarif.sadegorev.widget.refreshScheduleWidgets
 import kotlinx.coroutines.flow.*
@@ -65,11 +66,11 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
     val tasks = dao.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val courses = courseDao.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     fun saveCourse(course:CourseEntity)=viewModelScope.launch {
-        if(course.id==0L) courseDao.insert(course) else courseDao.update(course)
-        refreshScheduleWidgets(getApplication())
+        val saved = if(course.id==0L) course.copy(id=courseDao.insert(course)) else course.also { courseDao.update(it) }
+        try { CourseAlarmScheduler.schedule(getApplication(), saved) } finally { refreshScheduleWidgets(getApplication()) }
     }
     fun deleteCourse(course:CourseEntity)=viewModelScope.launch {
-        courseDao.delete(course);refreshScheduleWidgets(getApplication())
+        CourseAlarmScheduler.cancel(getApplication(), course.id);courseDao.delete(course);refreshScheduleWidgets(getApplication())
     }
     fun save(task: TaskEntity) = viewModelScope.launch {
         val saved = if (task.id == 0L) task.copy(id = dao.insert(task)) else task.also { dao.update(it) }

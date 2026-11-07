@@ -30,6 +30,11 @@ class BackupStoreTest {
         val course=BackupStore.read(archive(json).inputStream()).courses.single()
         assertEquals("Matematik",course.title);assertEquals(2,course.weekday);assertEquals(540,course.startMinute)
     }
+    @Test fun readsCourseReminderAndDefaultsOldBackupsToNone(){
+        val json="""{"format":"tasklist-backup","version":2,"tasks":[],"courses":[{"id":1,"title":"Fizik","weekday":3,"startMinute":600,"endMinute":660,"location":"","instructor":"","color":0,"reminderMinutes":15},{"id":2,"title":"Kimya","weekday":4,"startMinute":600,"endMinute":660,"location":"","instructor":"","color":0}],"settings":{}}"""
+        val courses=BackupStore.read(archive(json).inputStream()).courses
+        assertEquals(15,courses[0].reminderMinutes);assertEquals(-1,courses[1].reminderMinutes)
+    }
     @Test(expected=IllegalArgumentException::class) fun rejectsInvalidCourseHours(){
         val json="""{"format":"tasklist-backup","version":2,"tasks":[],"courses":[{"id":1,"title":"Ders","weekday":2,"startMinute":600,"endMinute":540,"location":"","instructor":"","color":0}],"settings":{}}"""
         BackupStore.read(archive(json).inputStream())

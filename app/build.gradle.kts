@@ -13,8 +13,8 @@ android {
         applicationId = "com.mehmetarif.sadegorev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.9"
+        versionCode = 11
+        versionName = "1.10"
     }
     // signing/tasklist.keystore depoya eklenmez (.gitignore). Dosya yerelde varsa
     // önceki APK'larla aynı imza kullanılır; yoksa debug derleme varsayılan debug

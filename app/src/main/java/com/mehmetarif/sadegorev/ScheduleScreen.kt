@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -24,9 +25,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mehmetarif.sadegorev.data.CourseEntity
+import com.mehmetarif.sadegorev.reminder.DEFAULT_COURSE_REMINDER
+import com.mehmetarif.sadegorev.reminder.courseReminderLabel
+import com.mehmetarif.sadegorev.reminder.courseReminderOptions
 import java.time.LocalDate
 
 private val days = listOf("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
+private val fullDays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar")
 private val colors = listOf(Color(0xFF8FB8F8), Color(0xFF9CDCC4), Color(0xFFE6B6A6), Color(0xFFC2B7EE), Color(0xFFE7D08B))
 private fun clock(minute: Int) = "%02d:%02d".format(minute / 60, minute % 60)
 
@@ -77,6 +82,11 @@ private fun clock(minute: Int) = "%02d:%02d".format(minute / 60, minute % 60)
                                 Text(course.title,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)
                                 if(course.location.isNotBlank())Text(course.location,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 if(course.instructor.isNotBlank())Text(course.instructor,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                if(course.reminderMinutes>=0)Row(verticalAlignment=Alignment.CenterVertically){
+                                    Icon(Icons.Default.NotificationsActive,null,Modifier.size(13.dp),tint=MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(courseReminderLabel(course.reminderMinutes),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                }
                             }
                             Spacer(Modifier.width(8.dp))
                             Text("${clock(course.startMinute)}\n${clock(course.endMinute)}",style=MaterialTheme.typography.labelMedium,color=color)
@@ -97,12 +107,13 @@ private fun clock(minute: Int) = "%02d:%02d".format(minute / 60, minute % 60)
     var start by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.startMinute ?: 9*60) }
     var end by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.endMinute ?: 10*60) }
     var color by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.color ?: 0) }
+    var reminderMinutes by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.reminderMinutes ?: DEFAULT_COURSE_REMINDER) }
     var settingTime by remember { mutableIntStateOf(-1) }
     var confirmDelete by remember { mutableStateOf(false) }
     val time=key(settingTime) { rememberTimePickerState(initialHour=(if(settingTime==0)start else end)/60, initialMinute=(if(settingTime==0)start else end)%60,is24Hour=true) }
     BackHandler { if(settingTime!=-1)settingTime=-1 else onBack() }
     Scaffold(topBar={TopAppBar(title={Text(if(settingTime!=-1)"Ders saati" else if(existing==null)"Yeni ders" else "Dersi düzenle")},navigationIcon={IconButton({if(settingTime!=-1)settingTime=-1 else onBack()}){Icon(Icons.Default.ArrowBack,"Geri")}})},bottomBar={
-        Button(enabled=settingTime!=-1||(title.isNotBlank()&&end>start),onClick={if(settingTime!=-1){val value=time.hour*60+time.minute;if(settingTime==0)start=value else end=value;settingTime=-1}else onSave((existing?:CourseEntity(title=title,weekday=weekday,startMinute=start,endMinute=end)).copy(title=title.trim(),weekday=weekday,startMinute=start,endMinute=end,location=location.trim(),instructor=instructor.trim(),color=color))},modifier=Modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp).height(54.dp),shape=RoundedCornerShape(50)){Text(if(settingTime!=-1)"Saati uygula" else "Dersi kaydet")}
+        Button(enabled=settingTime!=-1||(title.isNotBlank()&&end>start),onClick={if(settingTime!=-1){val value=time.hour*60+time.minute;if(settingTime==0)start=value else end=value;settingTime=-1}else onSave((existing?:CourseEntity(title=title,weekday=weekday,startMinute=start,endMinute=end)).copy(title=title.trim(),weekday=weekday,startMinute=start,endMinute=end,location=location.trim(),instructor=instructor.trim(),color=color,reminderMinutes=reminderMinutes))},modifier=Modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp).height(54.dp),shape=RoundedCornerShape(50)){Text(if(settingTime!=-1)"Saati uygula" else "Dersi kaydet")}
     }) { padding -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         if(settingTime!=-1){SectionLabel(if(settingTime==0)"Başlangıç saati" else "Bitiş saati");TimeInput(time)}else{
         SectionLabel("Ders bilgileri")
@@ -114,6 +125,10 @@ private fun clock(minute: Int) = "%02d:%02d".format(minute / 60, minute % 60)
             FilledTonalButton(onClick={settingTime=1},modifier=Modifier.weight(1f)){Text("Bitiş ${clock(end)}")}
         }
         if(end<=start)Text("Bitiş saati başlangıçtan sonra olmalı.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+        Text("Hatırlatma",style=MaterialTheme.typography.titleSmall)
+        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) { courseReminderOptions.forEach{(minutes,label) -> FilterChip(shape=RoundedCornerShape(50),border=null,selected=reminderMinutes==minutes,onClick={reminderMinutes=minutes},label={Text(label,style=MaterialTheme.typography.labelSmall)})} }
+        Text(if(reminderMinutes<0)"Bu ders için bildirim gönderilmez." else "Her hafta ${fullDays[weekday-1]} günü ${courseReminderLabel(reminderMinutes).replaceFirstChar{it.lowercase()}} bildirim gelir.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        if(reminderMinutes>=0)ReminderPermissionHint()
         TextField(location,{location=it},modifier=Modifier.fillMaxWidth(),label={Text("Derslik / yer (isteğe bağlı)")},singleLine=true,shape=RoundedCornerShape(22.dp),colors=TextFieldDefaults.colors(focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent))
         TextField(instructor,{instructor=it},modifier=Modifier.fillMaxWidth(),label={Text("Öğretim görevlisi (isteğe bağlı)")},singleLine=true,shape=RoundedCornerShape(22.dp),colors=TextFieldDefaults.colors(focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent))
         Text("Renk işareti",style=MaterialTheme.typography.titleSmall)

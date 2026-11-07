@@ -59,7 +59,10 @@ class BootReceiver : BroadcastReceiver() {
         val result = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                try { TaskDatabase.get(context).taskDao().pendingReminders(System.currentTimeMillis()).forEach { AlarmScheduler.schedule(context, it) } }
+                try {
+                    try { TaskDatabase.get(context).taskDao().pendingReminders(System.currentTimeMillis()).forEach { AlarmScheduler.schedule(context, it) } }
+                    finally { CourseAlarmScheduler.rescheduleAll(context) }
+                }
                 finally {
                     try { refreshWidgets(context) } finally { refreshScheduleWidgets(context) }
                 }

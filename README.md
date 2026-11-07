@@ -1,4 +1,4 @@
-# Planvori — Android 1.9 kaynak kodu
+# Planvori — Android kaynak kodu
 
 Siyah temalı, çevrimdışı çalışan kişisel görev ve zaman yönetimi uygulaması.
 
@@ -72,3 +72,11 @@ Günlük yedekleme kesin saatli değildir; internet/pil/Android kısıtlamaları
 Yeni görevde tarih/saat belirlendiğinde varsayılan hatırlatma görev saatidir. Tarihsiz görevler alarm oluşturmaz. Hatırlatma sayfasında seçili seçenek radyo işareti, belirgin kenarlık ve renk ile gösterilir; ana düzenleme sayfasında da seçenek adı yazılır. Seçtikten sonra Tamam ile görev ekranına dönülür. Hatırlatma yok seçilebilir. Görev saatinde ve dakika önce seçenekleri tarih değişikliğini takip eder; özel hatırlatma seçilen mutlak tarih/saatte kalır. Mevcut tarihli görevlerde kapalı hatırlatmalar değiştirilmez.
 
 Bildirim ve kesin alarm izinleri kapalıysa görev ekranında açıklama ve izin açma düğmesi gösterilir. Geçmiş hatırlatma zamanları için alarm kurulmaz; kullanıcıya açıklanır. Paket adı, imza ve Room şeması değişmedi. Bildirimlerin gerçek Android cihazındaki zamanlaması ve ekran görselleri bu ortamda doğrulanamadı; derleme ve 33 birim testi başarılıdır.
+
+## 1.10 — ders hatırlatmaları
+
+Ders ekleme/düzenleme ekranında **Hatırlatma** seçimi: Yok, Ders başında, 5/10/15/30 dk önce, 1 saat önce. Yeni derslerde varsayılan 10 dk öncedir; güncellemeden önce eklenmiş dersler kapalı başlar, istenirse tek tek açılır. Hatırlatma her hafta dersin gününde tekrarlanır: bildirim gelince bir sonraki haftanınki kurulur. Bildirimde ders adı, saat aralığı ve derslik yazar; dokununca Ders programı o günle açılır. Hatırlatması açık dersler listede zil simgesiyle gösterilir.
+
+Dersler ayrı **Ders hatırlatmaları** bildirim kanalını kullanır; Android ayarlarından görev bildirimlerinden bağımsız kapatılabilir. Telefon yeniden başlatıldığında, uygulama güncellendiğinde, saat veya saat dilimi değiştiğinde alarmlar yeniden kurulur. Hatırlatma ayarı ZIP/Drive yedeğine eklenir; eski yedeklerdeki dersler hatırlatmasız gelir. Room şeması 2→3: `courses` tablosuna `reminderMinutes` sütunu eklenir, mevcut veriler silinmez.
+
+Bu ortamda Android SDK indirilemediği için APK derlenmedi. Saat hesabı ve bildirim metni JVM üzerinde 8 birim testiyle doğrulandı (hafta geçişi, gece yarısını aşan hatırlatma dahil); Android Studio'da derleme ve gerçek cihazda bildirim denemesi gerekir.

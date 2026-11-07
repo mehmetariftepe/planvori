@@ -28,11 +28,14 @@
         </activity>
         <activity android:name=".widget.WidgetFilterActivity" android:taskAffinity="" android:exported="false" android:excludeFromRecents="true" android:theme="@style/Theme.WidgetMenu" />
         <receiver android:name=".reminder.AlarmReceiver" android:exported="false" />
+        <receiver android:name=".reminder.CourseAlarmReceiver" android:exported="false" />
         <receiver android:name=".reminder.BootReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
         <receiver android:name=".widget.TaskWidgetReceiver" android:exported="true">

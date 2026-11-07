@@ -27,7 +27,9 @@ data class CourseEntity(
     val endMinute: Int,
     val location: String = "",
     val instructor: String = "",
-    val color: Int = 0
+    val color: Int = 0,
+    /** Dersten kaç dakika önce hatırlatılacağı; -1 = hatırlatma yok. */
+    @ColumnInfo(defaultValue = "-1") val reminderMinutes: Int = -1
 )
 
 @Dao
@@ -37,6 +39,8 @@ interface CourseDao {
     @Insert suspend fun insert(course: CourseEntity): Long
     @Update suspend fun update(course: CourseEntity)
     @Delete suspend fun delete(course: CourseEntity)
+    @Query("SELECT * FROM courses WHERE id=:id") suspend fun get(id: Long): CourseEntity?
+    @Query("SELECT * FROM courses WHERE reminderMinutes>=0") suspend fun withReminders(): List<CourseEntity>
     @Query("DELETE FROM courses") suspend fun clearAll()
     @Insert suspend fun insertAll(courses: List<CourseEntity>)
 }
@@ -55,7 +59,7 @@ interface TaskDao {
     @Delete suspend fun delete(task: TaskEntity)
 }
 
-@Database(entities = [TaskEntity::class, CourseEntity::class], version = 2, exportSchema = false)
+@Database(entities = [TaskEntity::class, CourseEntity::class], version = 3, exportSchema = false)
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun courseDao(): CourseDao
@@ -66,9 +70,14 @@ abstract class TaskDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_courses_weekday` ON `courses` (`weekday`)")
             }
         }
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `courses` ADD COLUMN `reminderMinutes` INTEGER NOT NULL DEFAULT -1")
+            }
+        }
         @Volatile private var instance: TaskDatabase? = null
         fun get(context: Context): TaskDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, TaskDatabase::class.java, "sade-gorev.db").addMigrations(MIGRATION_1_2).build().also { instance = it }
+            instance ?: Room.databaseBuilder(context.applicationContext, TaskDatabase::class.java, "sade-gorev.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
     }
 }

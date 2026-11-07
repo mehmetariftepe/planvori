@@ -6,6 +6,7 @@ import androidx.core.content.FileProvider
 import androidx.room.withTransaction
 import com.mehmetarif.sadegorev.data.*
 import com.mehmetarif.sadegorev.reminder.AlarmScheduler
+import com.mehmetarif.sadegorev.reminder.CourseAlarmScheduler
 import com.mehmetarif.sadegorev.widget.refreshWidgets
 import com.mehmetarif.sadegorev.widget.refreshScheduleWidgets
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +39,7 @@ object BackupStore {
         val classes = JSONArray()
         courses.forEach { c -> classes.put(JSONObject().put("id",c.id).put("title",c.title)
             .put("weekday",c.weekday).put("startMinute",c.startMinute).put("endMinute",c.endMinute)
-            .put("location",c.location).put("instructor",c.instructor).put("color",c.color)) }
+            .put("location",c.location).put("instructor",c.instructor).put("color",c.color).put("reminderMinutes",c.reminderMinutes)) }
         val json = JSONObject().put("format","tasklist-backup").put("version",2)
             .put("exportedAt",System.currentTimeMillis()).put("tasks",rows).put("courses",classes).put("settings",settings)
         val dir = File(context.cacheDir,"backups").apply { mkdirs() }
@@ -78,9 +79,10 @@ object BackupStore {
             val row=classRows.getJSONObject(i)
             CourseEntity(row.getLong("id"),row.getString("title"),row.getInt("weekday"),
                 row.getInt("startMinute"),row.getInt("endMinute"),row.getString("location"),
-                row.getString("instructor"),row.getInt("color")).also { c ->
+                row.getString("instructor"),row.getInt("color"),row.optInt("reminderMinutes",-1)).also { c ->
                 require(c.id>0 && c.title.isNotBlank() && c.title.length<=10000 && c.weekday in 1..7 &&
-                    c.startMinute in 0..1439 && c.endMinute in 1..1440 && c.endMinute>c.startMinute && c.color in 0..4) { "Yedekte geçersiz ders var." }
+                    c.startMinute in 0..1439 && c.endMinute in 1..1440 && c.endMinute>c.startMinute && c.color in 0..4 &&
+                    c.reminderMinutes in -1..120) { "Yedekte geçersiz ders var." }
             }
         }
         require(courses.map{it.id}.distinct().size==courses.size) { "Yedekte yinelenen ders var." }
@@ -96,7 +98,7 @@ object BackupStore {
     suspend fun restore(context: Context,snapshot: BackupSnapshot) = withContext(Dispatchers.IO) {
         val safety=create(context)
         safety.copyTo(File(context.filesDir,"Tasklist-son-geri-yukleme-oncesi.zip"),overwrite=true)
-        val db=TaskDatabase.get(context); val old=db.taskDao().getAll()
+        val db=TaskDatabase.get(context); val old=db.taskDao().getAll(); val oldCourses=db.courseDao().getAll()
         db.withTransaction {
             db.taskDao().clearAll(); db.taskDao().insertAll(snapshot.tasks)
             db.courseDao().clearAll(); db.courseDao().insertAll(snapshot.courses)
@@ -107,6 +109,8 @@ object BackupStore {
         check(edit.commit()) { "Ayarlar kaydedilemedi." }
         old.forEach { AlarmScheduler.cancel(context,it.id) }
         snapshot.tasks.forEach { AlarmScheduler.schedule(context,it) }
+        oldCourses.forEach { CourseAlarmScheduler.cancel(context,it.id) }
+        snapshot.courses.forEach { CourseAlarmScheduler.schedule(context,it) }
         refreshWidgets(context)
         refreshScheduleWidgets(context)
     }
