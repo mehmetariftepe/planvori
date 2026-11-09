@@ -79,4 +79,4 @@ Ders ekleme/düzenleme ekranında **Hatırlatma** seçimi: Yok, Ders başında, 
 
 Dersler ayrı **Ders hatırlatmaları** bildirim kanalını kullanır; Android ayarlarından görev bildirimlerinden bağımsız kapatılabilir. Telefon yeniden başlatıldığında, uygulama güncellendiğinde, saat veya saat dilimi değiştiğinde alarmlar yeniden kurulur. Hatırlatma ayarı ZIP/Drive yedeğine eklenir; eski yedeklerdeki dersler hatırlatmasız gelir. Room şeması 2→3: `courses` tablosuna `reminderMinutes` sütunu eklenir, mevcut veriler silinmez.
 
-Bu ortamda Android SDK indirilemediği için APK derlenmedi. Saat hesabı ve bildirim metni JVM üzerinde 8 birim testiyle doğrulandı (hafta geçişi, gece yarısını aşan hatırlatma dahil); Android Studio'da derleme ve gerçek cihazda bildirim denemesi gerekir.
+`assembleRelease` ve `testDebugUnitTest` başarılıdır (42 test). APK önceki sürümlerle aynı sertifikayla imzalıdır (SHA-256 `9258153199d77aba0c2f547211455ef8a2e02353729174c55a59d28d2ccadfee`). Bildirimlerin gerçek cihazda zamanlaması ve 2→3 veritabanı göçü bu ortamda cihaz olmadığı için denenemedi.
