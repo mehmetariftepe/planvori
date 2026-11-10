@@ -13,8 +13,8 @@ android {
         applicationId = "com.mehmetarif.sadegorev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.10"
+        versionCode = 12
+        versionName = "2.0"
     }
     // signing/tasklist.keystore depoya eklenmez (.gitignore). Dosya yerelde varsa
     // önceki APK'larla aynı imza kullanılır; yoksa debug derleme varsayılan debug
@@ -45,6 +45,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
@@ -69,6 +70,25 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    // Ekran görüntüsü testleri (ScreenshotTest; yalnızca -Pscreenshots ile çalışır)
+    testImplementation(composeBom)
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+tasks.withType<Test>().configureEach {
+    // Ekran görüntüsü testleri yalnızca -Pscreenshots=1 verildiğinde çalışır
+    if (!project.hasProperty("screenshots")) exclude("**/screenshots/**")
+    systemProperty("screenshots", (project.findProperty("screenshots") ?: "").toString())
+    systemProperty("screenshotDir", rootProject.file("build/screenshots").absolutePath)
+    systemProperty("screenshotPrefix", (project.findProperty("screenshotPrefix") ?: "").toString())
+    // İsteğe bağlı: Robolectric'in Android jar'ını önceden indirilmiş klasörden kullan
+    project.findProperty("robolectricDir")?.let {
+        systemProperty("robolectric.offline", "true")
+        systemProperty("robolectric.dependency.dir", it.toString())
+    }
 }
 
 // AGP 8.13.2 profgen requires a fresh metadata directory on incremental builds.

@@ -80,3 +80,18 @@ Ders ekleme/düzenleme ekranında **Hatırlatma** seçimi: Yok, Ders başında, 
 Dersler ayrı **Ders hatırlatmaları** bildirim kanalını kullanır; Android ayarlarından görev bildirimlerinden bağımsız kapatılabilir. Telefon yeniden başlatıldığında, uygulama güncellendiğinde, saat veya saat dilimi değiştiğinde alarmlar yeniden kurulur. Hatırlatma ayarı ZIP/Drive yedeğine eklenir; eski yedeklerdeki dersler hatırlatmasız gelir. Room şeması 2→3: `courses` tablosuna `reminderMinutes` sütunu eklenir, mevcut veriler silinmez.
 
 `assembleRelease` ve `testDebugUnitTest` başarılıdır (42 test). APK önceki sürümlerle aynı sertifikayla imzalıdır (SHA-256 `9258153199d77aba0c2f547211455ef8a2e02353729174c55a59d28d2ccadfee`). Bildirimlerin gerçek cihazda zamanlaması ve 2→3 veritabanı göçü bu ortamda cihaz olmadığı için denenemedi.
+
+## 2.0 — yeni arayüz
+
+Uygulamanın tamamı ortak bir tasarım sistemiyle (`DesignSystem.kt`) yeniden çizildi: yeni açık/koyu/gece mavisi renk paletleri, daha güçlü tipografi, ince kenarlıklı kartlar, renkli ikon kutuları ve tutarlı boşluklar.
+
+- **Görevler:** selamlama ve tarih başlığı, bugünkü ilerleme kartı (tamamlanma halkası, geciken/yaklaşan sayıları), sayaçlı filtre hapları, tarih sıralamasında Gecikmiş/Bugün/Yarın/Bu hafta/Daha sonra/Tarihsiz grupları. Görev kartında öncelik renginde onay kutusu, not önizlemesi, "Bugün · 17:00" gibi okunur tarih, hatırlatma ve yüksek öncelik işaretleri.
+- **Kaydırma hareketleri:** görevi sağa kaydır → tamamla, sola kaydır → sil. İkisi de alttaki çubuktan **Geri al** ile geri alınabilir.
+- **Takvim:** kart içinde ay görünümü, bugün halkası, öncelik renginde görev noktaları, "Bugün" kısayolu.
+- **Ders programı:** tarihli hafta şeridi, saat sütunlu zaman çizelgesi, derslik/öğretmen/hatırlatma bilgisi, "Şimdi" ve "Sıradaki" rozetleri.
+- **Görev/ders düzenleme:** büyük başlık alanı, Bugün/Yarın/Haftaya hızlı tarih seçimi, renkli öncelik seçici, düzenleme ekranından silme, saat kutuları ve renk seçimi.
+- **Ayarlar ve yedekleme:** gruplanmış ayar kartları, tema önizlemeli görünüm seçimi, izin durumunu gösteren bildirim sayfası.
+
+Ekran görüntüleri cihaz olmadan Robolectric ile üretilebilir: `./gradlew testDebugUnitTest -Pscreenshots=1 --tests '*ScreenshotTest*'` → `build/screenshots/`. Robolectric'in Android jar'ı önceden indirildiyse `-ProbolectricDir=<klasör>` ile çevrimdışı kullanılır. Normal test çalıştırmasında bu testler atlanır.
+
+`assembleRelease` ve `testDebugUnitTest` başarılıdır (44 test); APK aynı sertifikayla imzalıdır. Kaydırma hareketleri ve animasyonlar gerçek cihazda denenmedi.
