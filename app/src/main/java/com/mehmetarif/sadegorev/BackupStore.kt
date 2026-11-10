@@ -35,7 +35,7 @@ object BackupStore {
         tasks.forEach { t -> rows.put(JSONObject().put("id",t.id).put("title",t.title)
             .put("description",t.description).put("dueAt",t.dueAt ?: JSONObject.NULL)
             .put("priority",t.priority).put("reminderAt",t.reminderAt ?: JSONObject.NULL)
-            .put("completed",t.completed).put("createdAt",t.createdAt)) }
+            .put("completed",t.completed).put("createdAt",t.createdAt).put("completedAt",t.completedAt ?: JSONObject.NULL)) }
         val classes = JSONArray()
         courses.forEach { c -> classes.put(JSONObject().put("id",c.id).put("title",c.title)
             .put("weekday",c.weekday).put("startMinute",c.startMinute).put("endMinute",c.endMinute)
@@ -70,7 +70,8 @@ object BackupStore {
         val tasks = (0 until rows.length()).map { i ->
             val row=rows.getJSONObject(i); val title=row.getString("title"); val id=row.getLong("id"); val priority=row.getInt("priority")
             require(id>0 && title.isNotBlank() && title.length<=10000 && priority in 0..2) { "Yedekte geçersiz görev var." }
-            TaskEntity(id,title,row.getString("description"),nullable(row,"dueAt"),priority,nullable(row,"reminderAt"),row.getBoolean("completed"),row.getLong("createdAt"))
+            TaskEntity(id,title,row.getString("description"),nullable(row,"dueAt"),priority,nullable(row,"reminderAt"),row.getBoolean("completed"),row.getLong("createdAt"),
+                if(row.has("completedAt")) nullable(row,"completedAt") else null)
         }
         require(tasks.map{it.id}.distinct().size==tasks.size) { "Yedekte yinelenen görev var." }
         val classRows = if(version>=2) json.getJSONArray("courses") else JSONArray()

@@ -97,7 +97,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         } finally { refreshWidgets(getApplication()) }
     }
     fun toggle(task: TaskEntity) = viewModelScope.launch {
-        val changed = task.copy(completed = !task.completed); dao.update(changed)
+        val changed = task.copy(completed = !task.completed, completedAt = if (task.completed) null else System.currentTimeMillis()); dao.update(changed)
         try {
             if (changed.completed) AlarmScheduler.cancel(getApplication(), changed.id) else AlarmScheduler.schedule(getApplication(), changed)
         } finally { refreshWidgets(getApplication()) }
@@ -235,7 +235,7 @@ class MainActivity : ComponentActivity() {
     val shown = when (sort) {
         1 -> tasks.sortedWith(compareByDescending<TaskEntity> { it.priority }.thenBy { it.dueAt ?: Long.MAX_VALUE })
         2 -> tasks.sortedBy { it.title.lowercase(TR) }
-        else -> if (screen == Screen.DONE) tasks.sortedByDescending { it.dueAt ?: it.createdAt } else tasks.sortedWith(compareBy<TaskEntity> { it.dueAt == null }.thenBy { it.dueAt })
+        else -> if (screen == Screen.DONE) tasks.sortedByDescending { it.completedAt ?: it.dueAt ?: it.createdAt } else tasks.sortedWith(compareBy<TaskEntity> { it.dueAt == null }.thenBy { it.dueAt })
     }
     fun bucketOf(t: TaskEntity): Bucket {
         val due = t.dueAt ?: return Bucket.NODATE
@@ -290,12 +290,7 @@ class MainActivity : ComponentActivity() {
 
 /** Bugünkü ilerleme kartı: tamamlanma halkası ve özet sayılar. */
 @Composable private fun TodayCard(all: List<TaskEntity>, modifier: Modifier = Modifier) {
-    val zone = ZoneId.systemDefault(); val today = LocalDate.now(zone); val now = System.currentTimeMillis()
-    fun dateOf(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-    val todays = all.filter { t -> t.dueAt?.let(::dateOf) == today || (t.dueAt == null && !t.completed) }
-    val done = todays.count { it.completed }; val total = todays.size
-    val overdue = all.count { !it.completed && (it.dueAt ?: Long.MAX_VALUE) < now }
-    val upcoming = all.count { !it.completed && it.dueAt?.let(::dateOf)?.isAfter(today) == true }
+    val (done, total, overdue, upcoming) = dayProgress(all, System.currentTimeMillis())
     val progress by animateFloatAsState(if (total == 0) 0f else done.toFloat() / total, tween(600), label = "progress")
     val primary = MaterialTheme.colorScheme.primary
     val dark = MaterialTheme.colorScheme.background.let { (it.red + it.green + it.blue) / 3 < 0.5f }

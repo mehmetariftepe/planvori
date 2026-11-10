@@ -15,7 +15,9 @@ data class TaskEntity(
     val priority: Int = 1,
     val reminderAt: Long? = null,
     val completed: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Tamamlanma anı; eski sürümlerde tamamlanan görevlerde null olabilir. */
+    val completedAt: Long? = null
 )
 
 @Entity(tableName = "courses", indices = [Index("weekday")])
@@ -59,7 +61,7 @@ interface TaskDao {
     @Delete suspend fun delete(task: TaskEntity)
 }
 
-@Database(entities = [TaskEntity::class, CourseEntity::class], version = 3, exportSchema = false)
+@Database(entities = [TaskEntity::class, CourseEntity::class], version = 4, exportSchema = false)
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun courseDao(): CourseDao
@@ -75,9 +77,14 @@ abstract class TaskDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `courses` ADD COLUMN `reminderMinutes` INTEGER NOT NULL DEFAULT -1")
             }
         }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `tasks` ADD COLUMN `completedAt` INTEGER")
+            }
+        }
         @Volatile private var instance: TaskDatabase? = null
         fun get(context: Context): TaskDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, TaskDatabase::class.java, "sade-gorev.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+            instance ?: Room.databaseBuilder(context.applicationContext, TaskDatabase::class.java, "sade-gorev.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
         }
     }
 }

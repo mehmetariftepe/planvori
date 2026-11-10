@@ -95,3 +95,7 @@ Uygulamanın tamamı ortak bir tasarım sistemiyle (`DesignSystem.kt`) yeniden �
 Ekran görüntüleri cihaz olmadan Robolectric ile üretilebilir: `./gradlew testDebugUnitTest -Pscreenshots=1 --tests '*ScreenshotTest*'` → `build/screenshots/`. Robolectric'in Android jar'ı önceden indirildiyse `-ProbolectricDir=<klasör>` ile çevrimdışı kullanılır. Normal test çalıştırmasında bu testler atlanır.
 
 `assembleRelease` ve `testDebugUnitTest` başarılıdır (44 test); APK aynı sertifikayla imzalıdır. Kaydırma hareketleri ve animasyonlar gerçek cihazda denenmedi.
+
+## 2.0.1 — ilerleme kartı düzeltmesi
+
+"Bugünkü ilerleme" kartı tarihsiz (ve tarihi geçmiş) görevler tamamlandığında ilerlemeyi göstermiyordu: görev tamamlanınca toplamdan düşüyordu. Artık görevlerin tamamlanma anı (`completedAt`) kaydedilir ve kart "bugün yapılacak açık görevler + bugün tamamlananlar" üzerinden hesaplanır (`DayProgress.kt`, 6 birim testi). Room şeması 3→4: `tasks` tablosuna `completedAt` sütunu eklenir; mevcut veriler korunur. Eski sürümde tamamlanmış görevler, tarihleri bugünse bugün tamamlanmış sayılır. Widget'tan tamamlama da zamanı kaydeder; ZIP/Drive yedeği alanı içerir, eski yedekler sorunsuz okunur.

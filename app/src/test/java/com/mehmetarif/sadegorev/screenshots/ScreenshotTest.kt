@@ -56,8 +56,8 @@ class ScreenshotTest {
                 TaskEntity(4, "Proje sunumunu hazırla", "Slaytlar + demo", at(1, 10), 2, at(1, 9)),
                 TaskEntity(5, "Diş randevusu", "", at(3, 14, 30), 1, at(3, 14)),
                 TaskEntity(6, "Faturayı öde", "", at(-1, 12), 2, null),
-                TaskEntity(7, "Spor salonu", "", at(0, 8), 0, null, completed = true),
-                TaskEntity(8, "E-postaları yanıtla", "", at(0, 9), 1, null, completed = true),
+                TaskEntity(7, "Spor salonu", "", at(0, 8), 0, null, completed = true, completedAt = at(0, 8, 30)),
+                TaskEntity(8, "E-postaları yanıtla", "", at(0, 9), 1, null, completed = true, completedAt = at(0, 9, 30)),
             ))
             val today = LocalDate.now(zone).dayOfWeek.value
             db.courseDao().insertAll(listOf(
@@ -92,6 +92,18 @@ class ScreenshotTest {
 
     @Test fun light() { render(1); shoot("1-gorevler-acik"); tab("Takvim"); shoot("2-takvim-acik"); tab("Dersler"); shoot("3-dersler-acik"); tab("Bitenler"); shoot("4-bitenler-acik"); tab("Ayarlar"); shoot("5-ayarlar-acik") }
     @Test fun dark() { render(0); shoot("6-gorevler-koyu"); tab("Takvim"); shoot("7-takvim-koyu"); tab("Dersler"); shoot("8-dersler-koyu") }
+    /** İlerleme kartı: tarihsiz görevi tamamlayınca 0/1 → 1/1 olmalı. */
+    @Test fun progressAfterCompleting() {
+        val dao = TaskDatabase.get(app).taskDao()
+        runBlocking { dao.clearAll(); dao.insertAll(listOf(TaskEntity(1, "Tarihsiz görev", "", null, 1))) }
+        theme(1)
+        val vm = TaskViewModel(app)
+        compose.setContent { SadeTheme { TaskApp(vm, null, false, false, false, 0, null) } }
+        shoot("12-ilerleme-once")
+        compose.runOnUiThread { vm.toggle(runBlocking { dao.get(1)!! }) }
+        compose.waitUntil(10_000) { runBlocking { dao.get(1)!!.completed } }
+        shoot("13-ilerleme-sonra")
+    }
     @Test fun navy() { render(2); shoot("9-gorevler-gece") }
     @Test fun courseEditor() {
         theme(1)

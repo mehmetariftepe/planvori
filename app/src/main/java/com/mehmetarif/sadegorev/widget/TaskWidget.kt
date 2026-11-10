@@ -80,7 +80,7 @@ class ToggleTaskAction:ActionCallback {
         val id=parameters[TaskIdKey]?:return
         val dao=TaskDatabase.get(context).taskDao()
         try {
-            dao.get(id)?.takeIf{!it.completed}?.let {dao.update(it.copy(completed=true));AlarmScheduler.cancel(context,id)}
+            dao.get(id)?.takeIf{!it.completed}?.let {dao.update(it.copy(completed=true,completedAt=System.currentTimeMillis()));AlarmScheduler.cancel(context,id)}
         } finally {refreshWidgets(context)}
     }
 }
