@@ -29,7 +29,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mehmetarif.sadegorev.data.CourseEntity
 import com.mehmetarif.sadegorev.reminder.DEFAULT_COURSE_REMINDER
-import com.mehmetarif.sadegorev.reminder.courseReminderLabel
+import com.mehmetarif.sadegorev.reminder.courseReminderSummary
+import com.mehmetarif.sadegorev.reminder.formatCourseReminders
+import com.mehmetarif.sadegorev.reminder.reminderOffsets
 import com.mehmetarif.sadegorev.reminder.courseReminderOptions
 import java.time.LocalDate
 import java.time.LocalTime
@@ -111,7 +113,7 @@ private val fullDays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "
                         if (course.instructor.isNotBlank()) add(Icons.Outlined.Person to course.instructor)
                     }
                     if (meta.isNotEmpty()) Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) { meta.forEach { (icon, text) -> CourseMeta(icon, text) } }
-                    if (course.reminderMinutes >= 0) Row(Modifier.padding(top = 6.dp)) { CourseMeta(Icons.Rounded.NotificationsActive, courseReminderLabel(course.reminderMinutes), MaterialTheme.colorScheme.primary) }
+                    if (course.reminderOffsets().isNotEmpty()) Row(Modifier.padding(top = 6.dp)) { CourseMeta(Icons.Rounded.NotificationsActive, courseReminderSummary(course.reminderOffsets()), MaterialTheme.colorScheme.primary) }
                 }
             }
         }
@@ -128,7 +130,7 @@ private val fullDays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun CourseEditorScreen(existing: CourseEntity?, initialWeekday: Int, onBack: () -> Unit, onSave: (CourseEntity) -> Unit, onDelete: (CourseEntity) -> Unit, initialDay: Int = LocalDate.now().dayOfWeek.value) {
     var title by rememberSaveable(existing?.id) { mutableStateOf(existing?.title.orEmpty()) }
     var location by rememberSaveable(existing?.id) { mutableStateOf(existing?.location.orEmpty()) }
@@ -137,7 +139,7 @@ private val fullDays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "
     var start by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.startMinute ?: 9 * 60) }
     var end by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.endMinute ?: 10 * 60) }
     var color by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.color ?: 0) }
-    var reminderMinutes by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.reminderMinutes ?: DEFAULT_COURSE_REMINDER) }
+    var reminderOffsets by rememberSaveable(existing?.id) { mutableStateOf(existing?.reminderOffsets() ?: listOf(DEFAULT_COURSE_REMINDER)) }
     var settingTime by remember { mutableIntStateOf(-1) }
     var confirmDelete by remember { mutableStateOf(false) }
     val time = key(settingTime) { rememberTimePickerState(initialHour = (if (settingTime == 0) start else end) / 60, initialMinute = (if (settingTime == 0) start else end) % 60, is24Hour = true) }
@@ -152,7 +154,7 @@ private val fullDays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "
         bottomBar = {
             Button(enabled = settingTime != -1 || (title.isNotBlank() && end > start), onClick = {
                 if (settingTime != -1) { val value = time.hour * 60 + time.minute; if (settingTime == 0) start = value else end = value; settingTime = -1 }
-                else onSave((existing ?: CourseEntity(title = title, weekday = weekday, startMinute = start, endMinute = end)).copy(title = title.trim(), weekday = weekday, startMinute = start, endMinute = end, location = location.trim(), instructor = instructor.trim(), color = color, reminderMinutes = reminderMinutes))
+                else onSave((existing ?: CourseEntity(title = title, weekday = weekday, startMinute = start, endMinute = end)).copy(title = title.trim(), weekday = weekday, startMinute = start, endMinute = end, location = location.trim(), instructor = instructor.trim(), color = color, reminderMinutes = reminderOffsets.maxOrNull() ?: -1, reminders = formatCourseReminders(reminderOffsets)))
             }, modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp).height(56.dp), shape = RoundedCornerShape(18.dp)) {
                 Text(if (settingTime != -1) "Saati uygula" else if (existing == null) "Dersi ekle" else "Değişiklikleri kaydet", style = MaterialTheme.typography.titleMedium)
             }
@@ -187,15 +189,16 @@ private val fullDays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "
                     TextField(instructor, { instructor = it }, Modifier.fillMaxWidth(), placeholder = { Text("Öğretim görevlisi") }, leadingIcon = { Icon(Icons.Outlined.Person, null) }, singleLine = true, colors = softFieldColors())
                 }
                 SectionHeader("Hatırlatma", Modifier.padding(start = 4.dp))
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     courseReminderOptions.forEach { (minutes, label) ->
-                        FilterChip(selected = reminderMinutes == minutes, onClick = { reminderMinutes = minutes }, label = { Text(label) }, shape = RoundedCornerShape(10.dp),
-                            leadingIcon = if (reminderMinutes == minutes) ({ Icon(Icons.Rounded.Check, null, Modifier.size(16.dp)) }) else null)
+                        val on = if (minutes < 0) reminderOffsets.isEmpty() else minutes in reminderOffsets
+                        FilterChip(selected = on, onClick = { reminderOffsets = if (minutes < 0) emptyList() else if (on) reminderOffsets - minutes else (reminderOffsets + minutes).sortedDescending() }, label = { Text(label) }, shape = RoundedCornerShape(10.dp),
+                            leadingIcon = if (on) ({ Icon(Icons.Rounded.Check, null, Modifier.size(16.dp)) }) else null)
                     }
                 }
-                Text(if (reminderMinutes < 0) "Bu ders için bildirim gönderilmez." else "Her hafta ${fullDays[weekday - 1]} günü ${courseReminderLabel(reminderMinutes).replaceFirstChar { it.lowercase() }} bildirim gelir.",
+                Text(if (reminderOffsets.isEmpty()) "Bu ders için bildirim gönderilmez." else "Birden fazla seçebilirsin. Her hafta ${fullDays[weekday - 1]} günü: ${courseReminderSummary(reminderOffsets).replaceFirstChar { it.lowercase() }}.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp))
-                if (reminderMinutes >= 0) ReminderPermissionHint()
+                if (reminderOffsets.isNotEmpty()) ReminderPermissionHint()
                 SectionHeader("Renk", Modifier.padding(start = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     CourseColors.forEachIndexed { i, c ->

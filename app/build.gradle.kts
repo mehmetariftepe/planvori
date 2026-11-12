@@ -13,8 +13,8 @@ android {
         applicationId = "com.mehmetarif.sadegorev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "2.0.1"
+        versionCode = 14
+        versionName = "2.1"
     }
     // signing/tasklist.keystore depoya eklenmez (.gitignore). Dosya yerelde varsa
     // önceki APK'larla aynı imza kullanılır; yoksa debug derleme varsayılan debug
@@ -81,6 +81,8 @@ dependencies {
 tasks.withType<Test>().configureEach {
     // Ekran görüntüsü testleri yalnızca -Pscreenshots=1 verildiğinde çalışır
     if (!project.hasProperty("screenshots")) exclude("**/screenshots/**")
+    // Robolectric testleri ~200 MB Android jar'ı indirir; -Probolectric=1 veya -ProbolectricDir ile çalışır
+    if (!project.hasProperty("robolectric") && !project.hasProperty("robolectricDir")) exclude("**/robolectric/**")
     systemProperty("screenshots", (project.findProperty("screenshots") ?: "").toString())
     systemProperty("screenshotDir", rootProject.file("build/screenshots").absolutePath)
     systemProperty("screenshotPrefix", (project.findProperty("screenshotPrefix") ?: "").toString())

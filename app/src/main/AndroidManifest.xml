@@ -29,6 +29,7 @@
         <activity android:name=".widget.WidgetFilterActivity" android:taskAffinity="" android:exported="false" android:excludeFromRecents="true" android:theme="@style/Theme.WidgetMenu" />
         <receiver android:name=".reminder.AlarmReceiver" android:exported="false" />
         <receiver android:name=".reminder.CourseAlarmReceiver" android:exported="false" />
+        <receiver android:name=".reminder.ReminderActionReceiver" android:exported="false" />
         <receiver android:name=".reminder.BootReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

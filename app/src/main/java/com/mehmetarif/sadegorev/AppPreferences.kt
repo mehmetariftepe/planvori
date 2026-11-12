@@ -19,6 +19,8 @@ object AppPreferences {
 
     const val WIDGET_PRIORITY = "widget_priority"
     const val SCHEDULE_WIDGET_DAY = "schedule_widget_day"
+    /** Bildirim açılana kadar sesi tekrarla (Boolean). */
+    const val INSISTENT_REMINDERS = "insistent_reminders"
 
     fun prefs(context: Context) = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 }

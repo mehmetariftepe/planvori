@@ -35,11 +35,11 @@ object BackupStore {
         tasks.forEach { t -> rows.put(JSONObject().put("id",t.id).put("title",t.title)
             .put("description",t.description).put("dueAt",t.dueAt ?: JSONObject.NULL)
             .put("priority",t.priority).put("reminderAt",t.reminderAt ?: JSONObject.NULL)
-            .put("completed",t.completed).put("createdAt",t.createdAt).put("completedAt",t.completedAt ?: JSONObject.NULL)) }
+            .put("completed",t.completed).put("createdAt",t.createdAt).put("completedAt",t.completedAt ?: JSONObject.NULL).put("reminders",t.reminders)) }
         val classes = JSONArray()
         courses.forEach { c -> classes.put(JSONObject().put("id",c.id).put("title",c.title)
             .put("weekday",c.weekday).put("startMinute",c.startMinute).put("endMinute",c.endMinute)
-            .put("location",c.location).put("instructor",c.instructor).put("color",c.color).put("reminderMinutes",c.reminderMinutes)) }
+            .put("location",c.location).put("instructor",c.instructor).put("color",c.color).put("reminderMinutes",c.reminderMinutes).put("reminders",c.reminders)) }
         val json = JSONObject().put("format","tasklist-backup").put("version",2)
             .put("exportedAt",System.currentTimeMillis()).put("tasks",rows).put("courses",classes).put("settings",settings)
         val dir = File(context.cacheDir,"backups").apply { mkdirs() }
@@ -71,7 +71,8 @@ object BackupStore {
             val row=rows.getJSONObject(i); val title=row.getString("title"); val id=row.getLong("id"); val priority=row.getInt("priority")
             require(id>0 && title.isNotBlank() && title.length<=10000 && priority in 0..2) { "Yedekte geçersiz görev var." }
             TaskEntity(id,title,row.getString("description"),nullable(row,"dueAt"),priority,nullable(row,"reminderAt"),row.getBoolean("completed"),row.getLong("createdAt"),
-                if(row.has("completedAt")) nullable(row,"completedAt") else null)
+                if(row.has("completedAt")) nullable(row,"completedAt") else null,
+                row.optString("reminders","").also { r -> require(r.length<=200 && (r.isEmpty() || r.split(",").all{it.toLongOrNull()!=null})) { "Yedekte geçersiz hatırlatma var." } })
         }
         require(tasks.map{it.id}.distinct().size==tasks.size) { "Yedekte yinelenen görev var." }
         val classRows = if(version>=2) json.getJSONArray("courses") else JSONArray()
@@ -80,10 +81,11 @@ object BackupStore {
             val row=classRows.getJSONObject(i)
             CourseEntity(row.getLong("id"),row.getString("title"),row.getInt("weekday"),
                 row.getInt("startMinute"),row.getInt("endMinute"),row.getString("location"),
-                row.getString("instructor"),row.getInt("color"),row.optInt("reminderMinutes",-1)).also { c ->
+                row.getString("instructor"),row.getInt("color"),row.optInt("reminderMinutes",-1),row.optString("reminders","")).also { c ->
                 require(c.id>0 && c.title.isNotBlank() && c.title.length<=10000 && c.weekday in 1..7 &&
                     c.startMinute in 0..1439 && c.endMinute in 1..1440 && c.endMinute>c.startMinute && c.color in 0..4 &&
-                    c.reminderMinutes in -1..120) { "Yedekte geçersiz ders var." }
+                    c.reminderMinutes in -1..120 && c.reminders.length<=60 &&
+                    (c.reminders.isEmpty() || c.reminders.split(",").all{(it.toIntOrNull()?:-1) in 0..120})) { "Yedekte geçersiz ders var." }
             }
         }
         require(courses.map{it.id}.distinct().size==courses.size) { "Yedekte yinelenen ders var." }

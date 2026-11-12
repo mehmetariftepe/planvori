@@ -99,3 +99,14 @@ Ekran görüntüleri cihaz olmadan Robolectric ile üretilebilir: `./gradlew tes
 ## 2.0.1 — ilerleme kartı düzeltmesi
 
 "Bugünkü ilerleme" kartı tarihsiz (ve tarihi geçmiş) görevler tamamlandığında ilerlemeyi göstermiyordu: görev tamamlanınca toplamdan düşüyordu. Artık görevlerin tamamlanma anı (`completedAt`) kaydedilir ve kart "bugün yapılacak açık görevler + bugün tamamlananlar" üzerinden hesaplanır (`DayProgress.kt`, 6 birim testi). Room şeması 3→4: `tasks` tablosuna `completedAt` sütunu eklenir; mevcut veriler korunur. Eski sürümde tamamlanmış görevler, tarihleri bugünse bugün tamamlanmış sayılır. Widget'tan tamamlama da zamanı kaydeder; ZIP/Drive yedeği alanı içerir, eski yedekler sorunsuz okunur.
+
+## 2.1 — çoklu hatırlatma ve dikkat çeken bildirimler
+
+- **Görevlerde çoklu hatırlatma:** Hatırlatma sayfasında birden fazla seçenek işaretlenebilir (görev saatinde, 5/15/30 dk, 1 saat, 1 gün önce) ve özel tarih/saatler eklenebilir; en fazla 5. Saate bağlı seçenekler tarih değişince onu izler, özel zamanlar yerinde kalır.
+- **Derslerde çoklu hatırlatma:** Ders düzenleme ekranında birden fazla süre seçilebilir (ör. 30 dk önce + 10 dk önce + ders başında); her biri haftalık tekrarlanır.
+- **Yeni bildirimler:** renkli baş harf simgesi, emoji'li başlık (⏰ / 🔥 yüksek öncelik / ⚠️ gecikmiş / 🎓 ders), "15 dk sonra · Bugün · 17:00" gibi kalan süre, genişleyince not; görev bildirimlerinde **✓ Tamamla** ve **10 dk ertele** düğmeleri. Kilit ekranında görünür, belirgin titreşim deseni kullanır.
+- **Ayarlar → Bildirimler:** "Israrlı hatırlatma" (bildirim açılana kadar ses tekrarlanır, varsayılan kapalı) ve "Deneme bildirimi gönder".
+- Bildirim kanalları yenilendi (`task_reminders_v2`, `course_reminders_v2`); Android'de bu kanallar için yapılmış özel ses/titreşim ayarları sıfırlanır.
+- Room şeması 4→5: `tasks.reminders` ve `courses.reminders` sütunları; eski kayıtlar tek hatırlatmalarıyla çalışmaya devam eder. Yedekler yeni alanları içerir, eski yedekler okunur.
+
+Testler: 54 JVM testi + Robolectric ile 8 test (1→5, 2→5, 4→5 veritabanı göçleri; bildirim içeriği, düğmeler, alarm sayıları). Robolectric testleri `-Probolectric=1` (jar'ı indirir) veya `-ProbolectricDir=<klasör>` ile çalışır. Bildirimin gerçek cihazdaki görünümü, sesi ve titreşimi denenmedi.

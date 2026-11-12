@@ -104,6 +104,22 @@ class ScreenshotTest {
         compose.waitUntil(10_000) { runBlocking { dao.get(1)!!.completed } }
         shoot("13-ilerleme-sonra")
     }
+    @Test fun multipleReminders() {
+        theme(1)
+        val zone = ZoneId.systemDefault()
+        val due = LocalDate.now(zone).plusDays(1).atTime(17, 0).atZone(zone).toInstant().toEpochMilli()
+        val task = TaskEntity(1, "Fizik ödevini teslim et", "", due, 2, due - 1440 * 60000L, reminders = "${due - 1440 * 60000L},${due - 60 * 60000L},$due")
+        compose.setContent { SadeTheme { com.mehmetarif.sadegorev.TaskEditorScreen(task, {}, {}) } }
+        shoot("14-gorev-hatirlatma-ozet")
+        compose.onNodeWithText("Hatırlatma").performClick()
+        shoot("15-gorev-coklu-hatirlatma")
+    }
+    @Test fun courseMultipleReminders() {
+        theme(1)
+        val course = CourseEntity(1, "Matematik", 1, 9 * 60, 10 * 60 + 30, "B-204", "Dr. Yılmaz", 0, 30, "30,10,0")
+        compose.setContent { SadeTheme { com.mehmetarif.sadegorev.CourseEditorScreen(course, 1, {}, {}, {}) } }
+        shoot("16-ders-coklu-hatirlatma")
+    }
     @Test fun navy() { render(2); shoot("9-gorevler-gece") }
     @Test fun courseEditor() {
         theme(1)

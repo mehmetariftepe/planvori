@@ -17,7 +17,9 @@ data class TaskEntity(
     val completed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     /** Tamamlanma anı; eski sürümlerde tamamlanan görevlerde null olabilir. */
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    /** Tüm hatırlatma zamanları (virgülle ayrılmış epoch ms). [reminderAt] ilkini tutar. */
+    val reminders: String = ""
 )
 
 @Entity(tableName = "courses", indices = [Index("weekday")])
@@ -31,7 +33,9 @@ data class CourseEntity(
     val instructor: String = "",
     val color: Int = 0,
     /** Dersten kaç dakika önce hatırlatılacağı; -1 = hatırlatma yok. */
-    @ColumnInfo(defaultValue = "-1") val reminderMinutes: Int = -1
+    @ColumnInfo(defaultValue = "-1") val reminderMinutes: Int = -1,
+    /** Tüm hatırlatmalar (virgülle ayrılmış "dakika önce"). [reminderMinutes] en erken olanı tutar. */
+    val reminders: String = ""
 )
 
 @Dao
@@ -55,13 +59,13 @@ interface TaskDao {
     @Query("SELECT * FROM tasks ORDER BY completed ASC, CASE WHEN dueAt IS NULL THEN 1 ELSE 0 END, dueAt ASC, priority DESC")
     fun observeAll(): Flow<List<TaskEntity>>
     @Query("SELECT * FROM tasks WHERE id=:id") suspend fun get(id: Long): TaskEntity?
-    @Query("SELECT * FROM tasks WHERE completed=0 AND reminderAt IS NOT NULL AND reminderAt>:now") suspend fun pendingReminders(now: Long): List<TaskEntity>
+    @Query("SELECT * FROM tasks WHERE completed=0 AND (reminderAt IS NOT NULL OR reminders!='')") suspend fun pendingReminders(): List<TaskEntity>
     @Insert suspend fun insert(task: TaskEntity): Long
     @Update suspend fun update(task: TaskEntity)
     @Delete suspend fun delete(task: TaskEntity)
 }
 
-@Database(entities = [TaskEntity::class, CourseEntity::class], version = 4, exportSchema = false)
+@Database(entities = [TaskEntity::class, CourseEntity::class], version = 5, exportSchema = false)
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun courseDao(): CourseDao
@@ -82,9 +86,15 @@ abstract class TaskDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `tasks` ADD COLUMN `completedAt` INTEGER")
             }
         }
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `tasks` ADD COLUMN `reminders` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `courses` ADD COLUMN `reminders` TEXT NOT NULL DEFAULT ''")
+            }
+        }
         @Volatile private var instance: TaskDatabase? = null
         fun get(context: Context): TaskDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, TaskDatabase::class.java, "sade-gorev.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+            instance ?: Room.databaseBuilder(context.applicationContext, TaskDatabase::class.java, "sade-gorev.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
         }
     }
 }

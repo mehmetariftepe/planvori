@@ -30,18 +30,21 @@ import java.time.*
     var title by rememberSaveable(existing?.id) { mutableStateOf(existing?.title.orEmpty()) }
     var desc by rememberSaveable(existing?.id) { mutableStateOf(existing?.description.orEmpty()) }
     var due by rememberSaveable(existing?.id) { mutableStateOf(existing?.dueAt) }
-    var reminder by rememberSaveable(existing?.id) { mutableStateOf(existing?.reminderAt) }
-    var reminderChoice by rememberSaveable(existing?.id) { mutableIntStateOf(initialReminderChoice(existing != null, existing?.dueAt, existing?.reminderAt)) }
+    val initial = remember(existing?.id) { initialReminderSelection(existing != null, existing?.dueAt, existing?.reminderTimes().orEmpty()) }
+    var offsets by rememberSaveable(existing?.id) { mutableStateOf(initial.offsets) }
+    var customs by rememberSaveable(existing?.id) { mutableStateOf(initial.custom) }
+    val selection = ReminderSelection(offsets, customs)
+    val times = reminderTimes(selection, due)
     var priority by rememberSaveable(existing?.id) { mutableIntStateOf(existing?.priority ?: 1) }
     var page by rememberSaveable { mutableIntStateOf(0) }
     var custom by rememberSaveable { mutableStateOf(false) }
     var discard by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    fun leave() { if (page != 0) page = 0 else if (title != existing?.title.orEmpty() || desc != existing?.description.orEmpty() || due != existing?.dueAt || reminder != existing?.reminderAt || priority != (existing?.priority ?: 1)) discard = true else onBack() }
+    fun leave() { if (page != 0) page = 0 else if (title != existing?.title.orEmpty() || desc != existing?.description.orEmpty() || due != existing?.dueAt || times != (if (existing?.dueAt == null) emptyList() else existing.reminderTimes()) || priority != (existing?.priority ?: 1)) discard = true else onBack() }
     BackHandler { leave() }
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now(zone)
-    val source = if (custom) reminder ?: due else due
+    val source = due
     val date = key(custom, page) { rememberDatePickerState(initialSelectedDateMillis = source?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }) }
     val local = source?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() } ?: LocalTime.of(18, 0)
     val time = key(custom, page) { rememberTimePickerState(local.hour, local.minute, true) }
@@ -49,8 +52,7 @@ import java.time.*
     fun quickDate(d: LocalDate) {
         val t = due?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() } ?: LocalTime.of(18, 0)
         val picked = d.atTime(t).atZone(zone).toInstant().toEpochMilli()
-        if (reminderChoice == CUSTOM_REMINDER && reminder == null) reminderChoice = 0
-        due = picked; reminder = reminderTime(reminderChoice, picked, reminder)
+        due = picked
     }
     val dueDate = due?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
 
@@ -62,7 +64,7 @@ import java.time.*
                 actions = { if (page == 0 && existing != null && onDelete != null) IconButton({ confirmDelete = true }) { Icon(Icons.Rounded.DeleteOutline, "Görevi sil", tint = MaterialTheme.colorScheme.error) } })
         },
         bottomBar = {
-            if (page == 0) Button(enabled = title.isNotBlank(), onClick = { onSave((existing ?: TaskEntity(title = title)).copy(title = title.trim(), description = desc.trim(), dueAt = due, reminderAt = reminderTime(reminderChoice, due, reminder), priority = priority)) },
+            if (page == 0) Button(enabled = title.isNotBlank(), onClick = { onSave((existing ?: TaskEntity(title = title)).copy(title = title.trim(), description = desc.trim(), dueAt = due, reminderAt = times.firstOrNull(), reminders = formatReminderTimes(times), priority = priority)) },
                 modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp).height(56.dp), shape = RoundedCornerShape(18.dp)) {
                 Icon(Icons.Rounded.Check, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
                 Text(if (existing == null) "Görevi oluştur" else "Değişiklikleri kaydet", style = MaterialTheme.typography.titleMedium)
@@ -81,7 +83,7 @@ import java.time.*
                             SettingsGroup(title = "Planlama") {
                                 SettingsRow(Icons.Rounded.Event, "Tarih ve saat", tint = Color(0xFF3E8BFF), value = due?.let { friendlyDateTime(it) } ?: "Ekle",
                                     onClick = { custom = false; page = 1 },
-                                    trailing = if (due != null) ({ IconButton({ due = null; reminder = null }, Modifier.size(32.dp)) { Icon(Icons.Rounded.Close, "Tarihi kaldır", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) } }) else null)
+                                    trailing = if (due != null) ({ IconButton({ due = null; customs = emptyList() }, Modifier.size(32.dp)) { Icon(Icons.Rounded.Close, "Tarihi kaldır", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) } }) else null)
                                 Row(Modifier.padding(start = 66.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     listOf("Bugün" to today, "Yarın" to today.plusDays(1), "Haftaya" to today.plusWeeks(1)).forEach { (label, d) ->
                                         FilterChip(selected = dueDate == d, onClick = { quickDate(d) }, label = { Text(label) }, shape = RoundedCornerShape(10.dp))
@@ -89,12 +91,12 @@ import java.time.*
                                 }
                                 GroupDivider()
                                 SettingsRow(Icons.Rounded.NotificationsActive, "Hatırlatma", tint = Color(0xFFF08A24),
-                                    value = if (due == null) "Önce tarih seç" else reminderLabel(reminderChoice, reminder),
+                                    value = if (due == null) "Önce tarih seç" else reminderSummary(selection),
                                     onClick = if (due != null) ({ page = 2 }) else null)
                             }
-                            if (due == null) Text("Tarih eklediğinde görev saatinde otomatik hatırlatılır.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp))
-                            if (due != null && reminderChoice != NO_REMINDER) ReminderPermissionHint()
-                            reminderTime(reminderChoice, due, reminder)?.let { if (it <= System.currentTimeMillis()) Text("Seçilen hatırlatma zamanı geçmişte. Geçmiş zamanlar için bildirim gönderilmez.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                            if (due == null) Text("Tarih eklediğinde görev saatinde otomatik hatırlatılır; istersen birden fazla hatırlatma ekleyebilirsin.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp))
+                            if (times.isNotEmpty()) ReminderPermissionHint()
+                            if (times.any { it <= System.currentTimeMillis() }) Text("Geçmişte kalan hatırlatma zamanları için bildirim gönderilmez.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                             SectionHeader("Öncelik", Modifier.padding(start = 4.dp))
                             SegmentedOptions(listOf("Düşük", "Orta", "Yüksek"), priority, { priority = it }, colors = listOf(priorityColor(0), priorityColor(1), priorityColor(2)))
                             Spacer(Modifier.height(12.dp))
@@ -112,17 +114,27 @@ import java.time.*
                             Button(enabled = date.selectedDateMillis != null, onClick = {
                                 val d = Instant.ofEpochMilli(date.selectedDateMillis!!).atZone(ZoneOffset.UTC).toLocalDate()
                                 val picked = d.atTime(time.hour, time.minute).atZone(zone).toInstant().toEpochMilli()
-                                if (custom) { reminderChoice = CUSTOM_REMINDER; reminder = picked } else { if (reminderChoice == CUSTOM_REMINDER && reminder == null) reminderChoice = 0; due = picked; reminder = reminderTime(reminderChoice, picked, reminder) }
-                                page = 0
+                                if (custom) { customs = (customs + picked).distinct().sorted(); page = 2 } else { due = picked; page = 0 }
                             }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp)) { Text("Uygula", style = MaterialTheme.typography.titleMedium) }
                         }
                         2 -> {
                             Text("Ne zaman hatırlatalım?", style = MaterialTheme.typography.headlineSmall)
+                            Text("Birden fazla seçebilirsin · ${selection.count}/$MAX_REMINDERS", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val full = selection.count >= MAX_REMINDERS
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                reminderOptions.forEach { (choice, label) -> ReminderOption(label, reminderChoice == choice) { reminderChoice = choice; reminder = reminderTime(choice, due, reminder) } }
-                                ReminderOption(reminderLabel(CUSTOM_REMINDER, if (reminderChoice == CUSTOM_REMINDER) reminder else null), reminderChoice == CUSTOM_REMINDER) { custom = true; page = 1 }
+                                reminderOptions.forEach { (minutes, label) ->
+                                    val on = minutes in offsets
+                                    ReminderOption(label, on, enabled = on || !full) { offsets = if (on) offsets - minutes else (offsets + minutes).sorted() }
+                                }
+                                customs.forEach { time ->
+                                    ReminderOption("Özel · " + customReminderLabel(time), true, removable = true) { customs = customs - time }
+                                }
+                                OutlinedButton(enabled = !full, onClick = { custom = true; page = 1 }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
+                                    Icon(Icons.Rounded.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Özel tarih ve saat ekle")
+                                }
                             }
-                            reminderTime(reminderChoice, due, reminder)?.let { if (it <= System.currentTimeMillis()) Text("Seçilen hatırlatma zamanı geçmişte. Geçmiş zamanlar için bildirim gönderilmez.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                            if (selection.count == 0) Text("Seçim yok: bu görev için bildirim gönderilmez.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (times.any { it <= System.currentTimeMillis() }) Text("Geçmişte kalan hatırlatma zamanları için bildirim gönderilmez.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                             Button({ page = 0 }, Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp)) { Text("Tamam", style = MaterialTheme.typography.titleMedium) }
                         }
                     }
@@ -137,15 +149,17 @@ import java.time.*
         confirmButton = { TextButton({ confirmDelete = false; onDelete(existing) }) { Text("Sil", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton({ confirmDelete = false }) { Text("Vazgeç") } })
 }
 
-@Composable private fun ReminderOption(label: String, selected: Boolean, onSelect: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
+@Composable private fun ReminderOption(label: String, selected: Boolean, enabled: Boolean = true, removable: Boolean = false, onToggle: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxWidth().selectable(selected = selected, enabled = enabled, role = Role.Checkbox, onClick = onToggle),
         shape = RoundedCornerShape(16.dp),
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 54.dp).padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = selected, onClick = null)
+            Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
             Spacer(Modifier.width(10.dp))
-            Text(label, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+            Text(label, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f),
+                color = if (selected) MaterialTheme.colorScheme.primary else if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            if (removable) Icon(Icons.Rounded.Close, "Kaldır", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

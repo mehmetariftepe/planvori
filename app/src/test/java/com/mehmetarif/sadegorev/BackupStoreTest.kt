@@ -35,6 +35,14 @@ class BackupStoreTest {
         val courses=BackupStore.read(archive(json).inputStream()).courses
         assertEquals(15,courses[0].reminderMinutes);assertEquals(-1,courses[1].reminderMinutes)
     }
+    @Test fun readsMultipleReminders(){
+        val json="""{"format":"tasklist-backup","version":2,"tasks":[{"id":1,"title":"G","description":"","dueAt":5000,"priority":1,"reminderAt":1000,"completed":false,"createdAt":1,"reminders":"1000,3000"}],"courses":[{"id":1,"title":"Fizik","weekday":3,"startMinute":600,"endMinute":660,"location":"","instructor":"","color":0,"reminderMinutes":30,"reminders":"30,10"}],"settings":{}}"""
+        val backup=BackupStore.read(archive(json).inputStream())
+        assertEquals("1000,3000",backup.tasks.single().reminders);assertEquals("30,10",backup.courses.single().reminders)
+    }
+    @Test(expected=IllegalArgumentException::class) fun rejectsInvalidReminderList(){
+        BackupStore.read(archive(document(rows=task.replace("\"createdAt\":12","\"createdAt\":12,\"reminders\":\"abc\""))).inputStream())
+    }
     @Test(expected=IllegalArgumentException::class) fun rejectsInvalidCourseHours(){
         val json="""{"format":"tasklist-backup","version":2,"tasks":[],"courses":[{"id":1,"title":"Ders","weekday":2,"startMinute":600,"endMinute":540,"location":"","instructor":"","color":0}],"settings":{}}"""
         BackupStore.read(archive(json).inputStream())

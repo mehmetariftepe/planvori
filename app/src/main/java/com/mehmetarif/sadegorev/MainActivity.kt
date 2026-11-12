@@ -641,6 +641,16 @@ private val TintPink = Color(0xFFE5508F)
                                 trailing = { if (exact) Icon(Icons.Rounded.CheckCircle, null, tint = TintGreen) else FilledTonalButton({ context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}"))) }) { Text("Aç") } })
                         }
                     }
+                    item {
+                        var insistent by remember { mutableStateOf(prefs.getBoolean(AppPreferences.INSISTENT_REMINDERS, false)) }
+                        SettingsGroup(title = "Dikkat çekme") {
+                            SettingsRow(Icons.Rounded.NotificationImportant, "Israrlı hatırlatma", subtitle = "Bildirimi açana kadar ses tekrarlanır", tint = TintPink, showChevron = false,
+                                onClick = { insistent = !insistent; prefs.edit().putBoolean(AppPreferences.INSISTENT_REMINDERS, insistent).apply() },
+                                trailing = { Switch(insistent, { insistent = it; prefs.edit().putBoolean(AppPreferences.INSISTENT_REMINDERS, it).apply() }) })
+                            GroupDivider()
+                            SettingsRow(Icons.Rounded.Send, "Deneme bildirimi gönder", subtitle = "Hatırlatmanın nasıl göründüğünü gör", tint = TintPurple, onClick = { com.mehmetarif.sadegorev.reminder.ReminderNotifications.showTest(context) })
+                        }
+                    }
                     item { Caption("Bazı telefonlar pil tasarrufu nedeniyle bildirimleri geciktirebilir. Ders hatırlatmaları ayrı bir bildirim kanalı kullanır; Android ayarlarından ayrıca yönetebilirsin.") }
                 }
                 "about" -> {
